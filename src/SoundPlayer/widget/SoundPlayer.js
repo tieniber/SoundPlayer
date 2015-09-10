@@ -94,11 +94,6 @@ define([
 
         // Attach events to HTML dom elements
         _setupEvents: function() {
-            this.connect(this.colorSelectNode, "change", function(e) {
-                // Function from mendix object to set an attribute.
-                this._contextObj.set(this.backgroundColor, this.colorSelectNode.value);
-            });
-
             this.connect(this.infoTextNode, "click", function(e) {
                 // Only on mobile stop event bubbling!
                 this._stopBubblingEventOnMobile(e);
@@ -154,16 +149,6 @@ define([
         // Handle validations.
         _handleValidation: function(validations) {
             this._clearValidations();
-
-            var validation = validations[0],
-                message = validation.getReasonByAttribute(this.backgroundColor);
-
-            if (this.readOnly) {
-                validation.removeAttribute(this.backgroundColor);
-            } else if (message) {
-                this._addValidation(message);
-                validation.removeAttribute(this.backgroundColor);
-            }
         },
 
         // Clear validations.
@@ -220,21 +205,13 @@ define([
                     })
                 });
 
-                var attrHandle = this.subscribe({
-                    guid: this._contextObj.getGuid(),
-                    attr: this.backgroundColor,
-                    callback: dojoLang.hitch(this, function(guid, attr, attrValue) {
-                        this._updateRendering();
-                    })
-                });
-
                 var validationHandle = this.subscribe({
                     guid: this._contextObj.getGuid(),
                     val: true,
                     callback: dojoLang.hitch(this, this._handleValidation)
                 });
 
-                this._handles = [ objectHandle, attrHandle, validationHandle ];
+                this._handles = [ objectHandle, validationHandle ];
             }
         }
     });
