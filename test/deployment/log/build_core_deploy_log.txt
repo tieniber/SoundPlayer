@@ -1,0 +1,10 @@
+Buildfile: C:\Users\eti\Documents\Projects\Custom Widgets\SoundPlayer\test\deployment\build_core.xml
+
+deploy:
+    [unzip] Expanding: C:\Program Files\Mendix\5.15.1\modeler\deployment.mxz into C:\Users\eti\Documents\Projects\Custom Widgets\SoundPlayer\test\deployment
+
+BUILD SUCCESSFUL
+Total time: 0 seconds
+
+
+
