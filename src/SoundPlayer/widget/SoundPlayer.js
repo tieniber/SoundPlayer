@@ -43,10 +43,13 @@ define([
         templateString: widgetTemplate,
 
         // Parameters configured in the Modeler.
+		dataSourceMf: "",
+		attributeToListen: "",
 
         // Internal variables. Non-primitives created in the prototype are shared between all widget instances.
         _handles: null,
         _contextObj: null,
+		_soundObj: null,
 
         // dojo.declare.constructor is called to construct the widget instance. Implement to initialize non-primitive properties.
         constructor: function() {
@@ -56,17 +59,20 @@ define([
         // dijit._WidgetBase.postCreate is called after constructing the widget. Implement to do extra setup work.
         postCreate: function() {
             console.log(this.id + ".postCreate");
-            this._updateRendering();
-            this._setupEvents();
+			
+
         },
 
         // mxui.widget._WidgetBase.update is called when context is changed or initialized. Implement to re-render and / or fetch data.
         update: function(obj, callback) {
             console.log(this.id + ".update");
 
-            this._contextObj = obj;
-            this._resetSubscriptions();
-            this._updateRendering();
+			if (this._contextObj !== obj) {
+				this._contextObj = obj;
+				this._getSound();
+				this._resetSubscriptions();
+			}
+
 
             callback();
         },
@@ -85,135 +91,113 @@ define([
             // Clean up listeners, helper objects, etc. There is no need to remove listeners added with this.connect / this.subscribe / this.own.
         },
 
-        // We want to stop events on a mobile device
-        _stopBubblingEventOnMobile: function(e) {
-            if (typeof document.ontouchstart !== "undefined") {
-                dojoEvent.stop(e);
-            }
-        },
-
-        // Attach events to HTML dom elements
-        _setupEvents: function() {
-            this.connect(this.infoTextNode, "click", function(e) {
-                // Only on mobile stop event bubbling!
-                this._stopBubblingEventOnMobile(e);
-
-                // If a microflow has been set execute the microflow on a click.
-                if (this.mfToExecute !== "") {
-                    mx.data.action({
-                        params: {
-                            applyto: "selection",
-                            actionname: this.mfToExecute,
-                            guids: [ this._contextObj.getGuid() ]
-                        },
-                        callback: function(obj) {
-                            //TODO what to do when all is ok!
-                        },
-                        error: dojoLang.hitch(this, function(error) {
-                            console.log(this.id + ": An error occurred while executing microflow: " + error.description);
-                        })
-                    }, this);
-                }
-            });
-        },
+		_getSound: function() {
+			console.log(this.id + ".getSound");
+			this._execMF(this._contextObj, this.dataSourceMf, dojoLang.hitch(this, this._setSound));
+		},
+		
+		_setSound: function(obj) {
+			console.log(this.id + ".setSound");
+			this._soundObj = obj[0];
+		},
 
         // Rerender the interface.
-        _updateRendering: function() {
-			if (this._contextObj && this._contextObj.getAttribute("HasContents"))  {
-				var soundURL = this._getFileUrl();
-				
-				var swfLocation = dojo.moduleUrl("SoundPlayer") + "lib/swf/";
-				
-				soundManager.setup({
-					url: swfLocation,
-				  	onready: function() {
-						var mySound = soundManager.createSound({
-					  		id: 'aSound',
-					  		url: soundURL
-					});
-					mySound.play();
-				  },
-				  ontimeout: function() {
-					// Hrmm, SM2 could not start. Missing SWF? Flash blocked? Show an error, etc.?
-				  }
-				});	
-				
+        _playSound: function() {
+			console.log(this.id + ".playSound");
+			if (this._soundObj && this._soundObj.getAttribute("HasContents") )  {
+				if (this._contextObj && this._contextObj.getAttribute(this.attributeToListen) ) {
+					var soundURL = this._getFileUrl();
+
+					var swfLocation = dojo.moduleUrl("SoundPlayer") + "lib/swf/";
+
+					soundManager.setup({
+						url: swfLocation,
+						onready: function() {
+							var mySound = soundManager.createSound({
+								id: 'aSound',
+								url: soundURL
+						});
+						mySound.play();
+					  },
+					  ontimeout: function() {
+						// Hrmm, SM2 could not start. Missing SWF? Flash blocked? Show an error, etc.?
+					  }
+					});	
+				} else {
+					console.log("Didn't play sound because attribute was false.");
+				}
 			} else {
 				console.log("No sound file found to play.");
 			}	
 			
-            // Important to clear all validations!
-            this._clearValidations();
-        },
-
-        // Handle validations.
-        _handleValidation: function(validations) {
-            this._clearValidations();
-        },
-
-        // Clear validations.
-        _clearValidations: function() {
-            dojoConstruct.destroy(this._alertdiv);
-            this._alertdiv = null;
-        },
-
-        // Show an error message.
-        _showError: function(message) {
-            if (this._alertDiv !== null) {
-                dojoHtml.set(this._alertDiv, message);
-                return true;
-            }
-            this._alertDiv = dojoConstruct.create("div", {
-                "class": "alert alert-danger",
-                "innerHTML": message
-            });
-            dojoConstruct.place(this.domNode, this._alertdiv);
-        },
-
-        // Add a validation.
-        _addValidation: function(message) {
-            this._showError(message);
         },
 
 		//Get the context entity URL
 		_getFileUrl : function() {
+			console.log(this.id + ".getURL");
 			var url;
-			if (this._contextObj === null || this._contextObj.getAttribute("Name") === null) {
-				url = "";
+			if (this._soundObj !== null && this._soundObj.getAttribute("HasContents")) {
+				url ="file?guid=" + this._soundObj.getGUID() + "&csrfToken=" + mx.session.getCSRFToken() + "&time=" + Date.now();
 			} else {
-				url ="file?guid=" + this._contextObj.getGUID() + "&csrfToken=" + mx.session.getCSRFToken() + "&time=" + Date.now();
+				url = "";
 			}
 			return url;
 		},
 		
         // Reset subscriptions.
         _resetSubscriptions: function() {
+            logger.debug(this.id + "._resetSubscriptions");
             // Release handles on previous object, if any.
             if (this._handles) {
-                this._handles.forEach(function(handle) {
+                dojoArray.forEach(this._handles, function (handle) {
                     mx.data.unsubscribe(handle);
                 });
                 this._handles = [];
             }
 
-            // When a mendix object exists create subscribtions. 
+            // When a mendix object exists create subscribtions.
             if (this._contextObj) {
-                var objectHandle = this.subscribe({
+                var attrHandle = this.subscribe({
                     guid: this._contextObj.getGuid(),
                     callback: dojoLang.hitch(this, function(guid) {
-                        this._updateRendering();
+						this._playSound();
                     })
                 });
 
-                var validationHandle = this.subscribe({
-                    guid: this._contextObj.getGuid(),
-                    val: true,
-                    callback: dojoLang.hitch(this, this._handleValidation)
-                });
-
-                this._handles = [ objectHandle, validationHandle ];
+                this._handles = [attrHandle];
             }
-        }
+        },
+		
+		_execMF: function (obj, mf, cb) {
+			if (mf) {
+				var params = {
+					applyto: "selection",
+					actionname: mf,
+					guids: []
+				};
+				if (obj) {
+					params.guids = [obj.getGuid()];
+				}
+				mx.data.action({
+					params: params,
+					callback: function (objs) {
+						if (cb) {
+							cb(objs);
+						}
+					},
+					error: function (error) {
+						if (cb) {
+							cb();
+						}
+						console.warn(error.description);
+					}
+				}, this);
+
+			} else if (cb) {
+				cb();
+			}
+		}
+		
     });
 });
 
