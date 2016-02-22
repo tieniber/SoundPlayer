@@ -125,7 +125,6 @@ define([
         // Rerender the interface.
         _updateRendering: function() {
 			if (this._contextObj && this._contextObj.getAttribute("HasContents"))  {
-				debugger;
 				var soundURL = this._getFileUrl();
 				
 				var swfLocation = dojo.moduleUrl("SoundPlayer") + "lib/swf/";
