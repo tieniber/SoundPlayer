@@ -1,1 +1,0 @@
-﻿define(["SoundPlayer/widget/SoundPlayer"], {});
